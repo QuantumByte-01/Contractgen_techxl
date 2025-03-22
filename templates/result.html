@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Generated Contract{% endblock %}
+{% block content %}
+<div class="card p-4">
+  <h2>Generated Contract</h2>
+  <div class="border p-3 mb-3" style="background-color: #fff;">
+    {{ contract|safe }}
+  </div>
+  <form method="POST" action="{{ url_for('apply_suggestions') }}">
+    <button type="submit" class="btn btn-warning me-2">Apply Suggested Changes</button>
+  </form>
+  <a href="{{ url_for('chat') }}" class="btn btn-secondary me-2">Open Chat</a>
+  <a href="{{ url_for('export_docx') }}" class="btn btn-primary me-2">Export Contract (No Suggestions)</a>
+  <a href="{{ url_for('index') }}" class="btn btn-link">Start Over</a>
+</div>
+{% endblock %}

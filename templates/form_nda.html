@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}NDA Generator{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-body">
+    <h2>NDA Generator</h2>
+    <form method="POST" action="{{ url_for('generate') }}">
+      <input type="hidden" name="contract_type" value="nda">
+      <div class="mb-3">
+        <label class="form-label">Effective Date:</label>
+        <input type="text" class="form-control" name="EFFECTIVE_DATE" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Party A (Disclosing Party):</label>
+        <input type="text" class="form-control" name="PARTY_A" placeholder="Name">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Party B (Receiving Party):</label>
+        <input type="text" class="form-control" name="PARTY_B" placeholder="Name">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Jurisdiction:</label>
+        <input type="text" class="form-control" name="JURISDICTION" placeholder="State/Country">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Tone (formal, concise, detailed):</label>
+        <input type="text" class="form-control" name="TONE" placeholder="formal">
+      </div>
+      <h4>Clauses</h4>
+      <div class="mb-3">
+        <label class="form-label">Confidentiality Clause:</label>
+        <textarea class="form-control" name="CLAUSE_CONFIDENTIALITY" rows="3" placeholder="Enter base clause text (or leave empty for example)"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Non-Use Clause:</label>
+        <textarea class="form-control" name="CLAUSE_NON_USE" rows="3" placeholder="Enter base clause text (or leave empty for example)"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Term Clause:</label>
+        <textarea class="form-control" name="CLAUSE_TERM" rows="3" placeholder="Enter base clause text (or leave empty for example)"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Other Clauses (Optional):</label>
+        <textarea class="form-control" name="OTHER_CLAUSES" rows="6" placeholder="Enter additional clauses in the format:&#10;Clause Title: [Clause content]&#10;..."></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Generate NDA</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

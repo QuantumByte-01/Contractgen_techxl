@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Rental Agreement Generator{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-body">
+    <h2>Rental Agreement Generator</h2>
+    <form method="POST" action="{{ url_for('generate') }}">
+      <input type="hidden" name="contract_type" value="rental_agreement">
+      <div class="mb-3">
+        <label class="form-label">Effective Date:</label>
+        <input type="text" class="form-control" name="EFFECTIVE_DATE" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Landlord:</label>
+        <input type="text" class="form-control" name="LANDLORD" placeholder="Name">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Tenant:</label>
+        <input type="text" class="form-control" name="TENANT" placeholder="Name">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Jurisdiction:</label>
+        <input type="text" class="form-control" name="JURISDICTION" placeholder="State/Country">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Tone (formal, concise, detailed):</label>
+        <input type="text" class="form-control" name="TONE" placeholder="formal">
+      </div>
+      <h4>Clauses</h4>
+      <div class="mb-3">
+        <label class="form-label">Premises Description:</label>
+        <textarea class="form-control" name="CLAUSE_PREMISES_DESCRIPTION" rows="3" placeholder="Enter base clause text (or leave empty for example)"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Rent Payment:</label>
+        <textarea class="form-control" name="CLAUSE_RENT_PAYMENT" rows="3" placeholder="Enter base clause text (or leave empty for example)"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Security Deposit:</label>
+        <textarea class="form-control" name="CLAUSE_SECURITY_DEPOSIT" rows="3" placeholder="Enter base clause text (or leave empty for example)"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Termination Clause:</label>
+        <textarea class="form-control" name="CLAUSE_TERMINATION" rows="3" placeholder="Enter base clause text (or leave empty for example)"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Maintenance Responsibility:</label>
+        <textarea class="form-control" name="CLAUSE_MAINTENANCE_RESPONSIBILITY" rows="3" placeholder="Enter base clause text (or leave empty for example)"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Other Clauses (Optional):</label>
+        <textarea class="form-control" name="OTHER_CLAUSES" rows="6" placeholder="Enter additional clauses in the format:&#10;Clause Title: [Clause content]&#10;..."></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Generate Rental Agreement</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

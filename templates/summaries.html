@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Summarize & Analyze Contract{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-body">
+    <h2>Summarize & Analyze Contract</h2>
+    <form method="POST" action="{{ url_for('summarize') }}" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label class="form-label">Upload Contract (PDF or DOCX):</label>
+        <input type="file" class="form-control" name="contract_file" accept=".pdf,.docx">
+      </div>
+      <button type="submit" class="btn btn-primary">Analyze Contract</button>
+    </form>
+    {% if summary %}
+    <div class="mt-4">
+      <h4>Analysis & Summary:</h4>
+      <div class="border p-3">
+        {{ summary | safe }}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

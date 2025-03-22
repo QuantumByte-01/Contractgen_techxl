@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Contract Chat{% endblock %}
+{% block content %}
+<div class="card p-4">
+  <h2>Iterative Contract Modification</h2>
+  <div class="border p-3 mb-3" style="background-color: #fff;">
+    <h4>Current Contract</h4>
+    <div>{{ contract|safe }}</div>
+  </div>
+
+  <form method="POST" action="{{ url_for('chat') }}">
+    <div class="mb-3">
+      <label class="form-label">Your Request/Message:</label>
+      <textarea class="form-control" name="user_message" rows="3"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Send to Model</button>
+    <a href="{{ url_for('index') }}" class="btn btn-link">Back to Home</a>
+  </form>
+</div>
+{% endblock %}

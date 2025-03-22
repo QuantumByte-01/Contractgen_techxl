@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Analysis Result{% endblock %}
+{% block content %}
+<div class="card p-4">
+  <h2>Analysis Result</h2>
+  <div class="border p-3 mb-3" style="background-color: #fff;">
+    {{ analysis|safe }}
+  </div>
+  <a href="{{ url_for('index') }}" class="btn btn-link">Back to Home</a>
+</div>
+{% endblock %}
