@@ -5,6 +5,17 @@ import requests
 
 client = genai.Client(api_key="AIzaSyC9phEzmwI8zEx6o3ohlbdT9yeUyfKmvaE")
 
+def clean_export_text(html_content: str) -> str:
+    """
+    Cleans the HTML content for export by removing meta information
+    that should not appear in the final document.
+    """
+    cleaned = re.sub(r'<p><strong>(Tone|Jurisdiction|Effective Date):.*?</p>', '', html_content, flags=re.IGNORECASE)
+
+    cleaned = re.sub(r'<h3>Scope of Services<\/h3>', '', cleaned, flags=re.IGNORECASE)
+    return cleaned
+
+
 def gemini_generate(prompt: str) -> str:
     improved_prompt = (
         prompt

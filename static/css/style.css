@@ -1,47 +1,46 @@
 body {
     background-color: #f8f9fa;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  }
-  
-  .navbar {
+}
+
+.navbar {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  
-  .navbar-brand {
+}
+
+.navbar-brand {
     font-weight: bold;
     font-size: 1.75rem;
-  }
-  
-  .card {
+}
+
+.card {
     margin-top: 20px;
     border-radius: 8px;
     box-shadow: 0 0 15px rgba(0,0,0,0.1);
-  }
-  
-  .card h2 {
+}
+
+.card h2 {
     color: #333;
-  }
-  
-  .border {
+}
+
+.border {
     background-color: #ffffff;
     padding: 1.5rem;
     border: 1px solid #e0e0e0;
     border-radius: 4px;
-  }
-  
-  .btn {
+}
+
+.btn {
     margin: 5px;
-  }
-  
-  #contractContainer, #chatContractBox {
+}
+
+#contractContainer, #chatContractBox {
     font-size: 1rem;
     line-height: 1.6;
     color: #444;
-  }
-  
-  @media (max-width: 576px) {
+}
+
+@media (max-width: 576px) {
     .navbar-brand {
-      font-size: 1.5rem;
+        font-size: 1.5rem;
     }
-  }
-  
+}

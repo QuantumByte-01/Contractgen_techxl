@@ -7,7 +7,8 @@ from utils import (
     remove_suggestions_from_html,
     extract_suggestions_from_html,
     incorporate_suggestions_with_model,
-    search_context
+    search_context,
+    clean_export_text
 )
 from chat import chat_with_model
 from analysis import extract_text_from_pdf, extract_text_from_docx, summarize_and_analyze
@@ -193,19 +194,20 @@ def chat():
 
 @app.route("/export", methods=["POST"])
 def export_docx():
-    """
-    Exports the contract as a DOCX file with preserved formatting.
-    Uses html2docx to convert HTML to DOCX.
-    """
     contract_html = request.form.get("contract_html", "No contract generated.")
     if contract_html == "No contract generated.":
         return "No contract generated."
 
     contract_no_suggestions = remove_suggestions_from_html(contract_html)
-    docx_bytes = html2docx(contract_no_suggestions, title)
+    contract_cleaned = clean_export_text(contract_no_suggestions)
     
-    docx_bytes.seek(0) 
-    return send_file(docx_bytes, mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document", as_attachment=True, download_name="contract.docx")
+    from html2docx import html2docx
+    title='updated'
+    docx_bytes = html2docx(contract_cleaned, title)
+    
+    docx_bytes.seek(0)
+    return send_file(docx_bytes, as_attachment=True, download_name="contract.docx", mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
 
 
 @app.route("/analyze", methods=["GET", "POST"])
