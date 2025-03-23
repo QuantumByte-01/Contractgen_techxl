@@ -1,23 +1,25 @@
-import os
-import io
-import docx
+import os, io, docx, re
 from flask import Flask, render_template, request, send_file
 from werkzeug.utils import secure_filename
-
 from utils import (
     parse_clauses,
     generate_contract,
     remove_suggestions_from_html,
     extract_suggestions_from_html,
-    incorporate_suggestions_with_model,
+    incorporate_suggestions_with_model
 )
 from chat import chat_with_model
 from analysis import extract_text_from_pdf, extract_text_from_docx, summarize_and_analyze
+from html2docx import html2docx
+
+html_content = "<p>This is a sample contract.</p>"
+title = "Contract Document"
+
+docx_content = html2docx(html_content, title)  
 
 app = Flask(__name__)
-app.secret_key = "your_secret_key_here"  # For demonstration, but we won't store the contract in session.
+app.secret_key = "your_secret_key_here"  
 
-# For analyzing existing PDF/DOCX
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
@@ -28,7 +30,6 @@ def allowed_file(filename):
 
 @app.route("/")
 def index():
-    # Main page with links to contract forms & analysis
     return render_template("index.html")
 
 @app.route("/form")
@@ -136,36 +137,29 @@ def generate():
     else:
         return "Unsupported contract type."
 
-    # Generate final contract HTML
     contract_html = generate_contract(contract_type, details, clauses, other_clauses, customization)
-    # We do NOT store it in session. We'll rely on localStorage in the client.
 
     return render_template("result.html", contract=contract_html)
+
 
 @app.route("/apply", methods=["POST"])
 def apply_suggestions():
     """
-    1) Extract the contract from localStorage (hidden field).
-    2) Separate the main contract from the suggestions block.
-    3) Feed both to the model, asking it to produce a final version with NO suggestions.
-    4) Return that final version in result.html.
+    Extract the contract (including suggestions) from the request,
+    then feed both the main contract and suggestions back to the model to merge them.
     """
     contract_html = request.form.get("contract_html", "No contract generated.")
     if contract_html == "No contract generated.":
         return render_template("result.html", contract=contract_html)
-
-    # 1. Separate main contract from suggestions
+    
     main_body, suggestions_block = extract_suggestions_from_html(contract_html)
-
-    if not suggestions_block:
-        # If no suggestions exist, just return the same contract
+    
+    if not suggestions_block.strip():
         final_version = main_body
     else:
-        # 2. Incorporate suggestions via the model
         final_version = incorporate_suggestions_with_model(main_body, suggestions_block)
-
+    
     return render_template("result.html", contract=final_version)
-
 
 @app.route("/chat", methods=["GET", "POST"])
 def chat():
@@ -174,10 +168,8 @@ def chat():
     and sent to the server with the user's request.
     """
     if request.method == "GET":
-        # Just show a page with a text area for user input
         return render_template("chat.html", contract="")
     else:
-        # POST: user has typed a message and provided contract_html from localStorage
         contract_html = request.form.get("contract_html", "No contract generated.")
         user_message = request.form.get("user_message", "")
         if contract_html == "No contract generated.":
@@ -189,32 +181,18 @@ def chat():
 @app.route("/export", methods=["POST"])
 def export_docx():
     """
-    Exports the contract as a DOCX file, removing HTML tags and suggestions/analysis.
+    Exports the contract as a DOCX file with preserved formatting.
+    Uses html2docx to convert HTML to DOCX.
     """
     contract_html = request.form.get("contract_html", "No contract generated.")
     if contract_html == "No contract generated.":
         return "No contract generated."
 
-    # 1) Remove suggestions block
     contract_no_suggestions = remove_suggestions_from_html(contract_html)
-    # 2) Convert HTML -> plain text for docx
-    plain_text = html_to_text(contract_no_suggestions)
-
-    # 3) Build docx
-    doc = docx.Document()
-    doc.add_heading("Exported Contract", 0)
-    doc.add_paragraph(plain_text)
-
-    buffer = io.BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
-
-    return send_file(
-        buffer,
-        as_attachment=True,
-        download_name="contract.docx",
-        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )
+    docx_bytes = html2docx(contract_no_suggestions, title)
+    
+    docx_bytes.seek(0) 
+    return send_file(docx_bytes, mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document", as_attachment=True, download_name="contract.docx")
 
 
 @app.route("/analyze", methods=["GET", "POST"])
@@ -235,7 +213,6 @@ def analyze():
             filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
             file.save(filepath)
 
-            # Extract text
             if filename.lower().endswith(".pdf"):
                 text_content = extract_text_from_pdf(filepath)
             else:
@@ -253,11 +230,8 @@ def html_to_text(html_content: str) -> str:
     A simple approach to remove HTML tags, leaving plain text.
     For more robust solutions, consider 'BeautifulSoup' or 'html2text'.
     """
-    # Remove tags
     text = re.sub(r'<[^>]*>', '', html_content)
-    # Unescape common entities if needed
     text = text.replace('&nbsp;', ' ').replace('&amp;', '&')
-    # Clean up multiple spaces
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 

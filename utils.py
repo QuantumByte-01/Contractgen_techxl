@@ -58,45 +58,36 @@ def remove_suggestions_from_html(contract_html: str) -> str:
 
 def extract_suggestions_from_html(contract_html: str) -> (str, str):
     """
-    Extracts the suggestions portion and the main contract portion.
-    Returns (contract_body, suggestions_text).
-
-    Example logic: If suggestions start at <hr><h4>Additional Suggestions
-    and continue to the end, we can separate them.
+    Separates the main contract (everything before the suggestions block) and the suggestions.
+    Assumes suggestions start with a specific marker.
     """
     pattern = re.compile(r'(<hr><h4>Additional Suggestions.*)', re.DOTALL)
     match = pattern.search(contract_html)
     if match:
-        main_part = contract_html[: match.start()].strip()
-        suggestions_part = contract_html[match.start():].strip()
-        return main_part, suggestions_part
+        main_body = contract_html[:match.start()].strip()
+        suggestions_block = contract_html[match.start():].strip()
+        return main_body, suggestions_block
     else:
-        # No suggestions found
         return contract_html, ""
 
 def incorporate_suggestions_with_model(contract_body: str, suggestions: str) -> str:
     """
-    Feeds the contract body + suggestions to the model, asking it to merge them
-    into a final version with no additional suggestions.
+    Feeds the main contract and suggestions to the model to produce a final version with no suggestions.
     """
-    # Convert <...> HTML tags to plain text for the prompt (optional).
-    # Or just feed raw HTML. We'll do a quick strip of tags for clarity:
     plain_contract = re.sub(r'<[^>]+>', '', contract_body)
     plain_suggestions = re.sub(r'<[^>]+>', '', suggestions)
-
+    
     prompt = (
         "Below is a contract and a set of suggestions. "
-        "Please merge these suggestions into the contract, producing a final version. "
-        "Do not add any new suggestions or analysis. Provide the final contract text only.\n\n"
-        "CONTRACT:\n"
-        f"{plain_contract}\n\n"
-        "SUGGESTIONS:\n"
-        f"{plain_suggestions}\n\n"
-        "Return the final contract text only, with no extra bullet points or disclaimers."
+        "Please merge these suggestions into the contract and produce a final version with no additional suggestions. "
+        "Return the final contract text with proper formatting (using HTML tags for headings, lists, etc.) only.\n\n"
+        "CONTRACT:\n" + plain_contract + "\n\n"
+        "SUGGESTIONS:\n" + plain_suggestions + "\n\n"
+        "Final Contract:"
     )
     result = gemini_generate(prompt)
-    # We'll interpret the result as plain text. If there's any Markdown, convert it:
     return markdown.markdown(result)
+
 
 def generate_suggestions(customization: dict) -> str:
     """
@@ -190,20 +181,17 @@ def generate_contract(contract_type: str, details: dict, clauses: dict, other_cl
         header = "<h2>Contract</h2>"
         signature_block = "<h4>Signatures</h4>"
 
-    # Main clauses
     clauses_block = ""
     for title, base_text in clauses.items():
         clause_html = generate_clause(title, base_text, customization)
         clauses_block += f"<h3>{title}</h3><div>{clause_html}</div><hr>"
 
-    # Additional clauses
     other_block = ""
     if other_clauses:
         for title, base_text in other_clauses.items():
             clause_html = generate_clause(title, base_text, customization)
             other_block += f"<h3>{title}</h3><div>{clause_html}</div><hr>"
 
-    # Suggestions
     suggestions_html = generate_suggestions(customization)
 
     return (

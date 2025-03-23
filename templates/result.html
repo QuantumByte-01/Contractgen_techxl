@@ -6,36 +6,32 @@
   <div class="border p-3 mb-3 bg-white" id="contractContainer">
     {{ contract|safe }}
   </div>
-
-  <form id="applyForm" method="POST" action="{{ url_for('apply_suggestions') }}" class="d-inline">
-    <input type="hidden" name="contract_html" id="apply_contract_html">
-    <button type="submit" class="btn btn-warning">Apply Suggested Changes</button>
-  </form>
-
-  <form id="chatForm" method="GET" action="{{ url_for('chat') }}" class="d-inline">
-    <button type="submit" class="btn btn-secondary">Open Chat</button>
-  </form>
-
-  <form id="exportForm" method="POST" action="{{ url_for('export_docx') }}" class="d-inline">
-    <input type="hidden" name="contract_html" id="export_contract_html">
-    <button type="submit" class="btn btn-primary">Export Contract (No Suggestions)</button>
-  </form>
-
-  <a href="{{ url_for('index') }}" class="btn btn-link">Start Over</a>
+  <div class="mb-3">
+    <form id="applyForm" method="POST" action="{{ url_for('apply_suggestions') }}" class="d-inline">
+      <input type="hidden" name="contract_html" id="apply_contract_html">
+      <button type="submit" class="btn btn-warning">Apply Suggested Changes</button>
+    </form>
+    <form id="chatForm" method="GET" action="{{ url_for('chat') }}" class="d-inline">
+      <button type="submit" class="btn btn-secondary">Open Chat</button>
+    </form>
+    <form id="exportForm" method="POST" action="{{ url_for('export_docx') }}" class="d-inline">
+      <input type="hidden" name="contract_html" id="export_contract_html">
+      <button type="submit" class="btn btn-primary">Export Contract (No Suggestions)</button>
+    </form>
+    <a href="{{ url_for('index') }}" class="btn btn-link">Start Over</a>
+  </div>
 </div>
 {% block scripts %}
 <script>
-  // Save the contract to localStorage
+  // Save the contract to localStorage on page load
   const contractHTML = `{{ contract|tojson|safe }}`;
   localStorage.setItem("contract_html", contractHTML);
-
-  // On apply form submit, copy localStorage to hidden field
+  
+  // On apply and export form submit, load the contract from localStorage
   document.getElementById("applyForm").addEventListener("submit", function(){
     let stored = localStorage.getItem("contract_html") || "No contract generated.";
     document.getElementById("apply_contract_html").value = stored;
   });
-
-  // On export form submit, copy localStorage to hidden field
   document.getElementById("exportForm").addEventListener("submit", function(){
     let stored = localStorage.getItem("contract_html") || "No contract generated.";
     document.getElementById("export_contract_html").value = stored;

@@ -3,32 +3,29 @@
 {% block content %}
 <div class="card p-4">
   <h2>Iterative Contract Modification</h2>
-  <p>Below is the latest contract. Enter your request below to update it.</p>
-
+  <p>Below is your current contract. Enter your message to request changes.</p>
   <div class="border p-3 mb-3 bg-white" id="chatContractBox">
     {{ contract|safe }}
   </div>
-
   <form id="chatForm" method="POST" action="{{ url_for('chat') }}">
     <input type="hidden" name="contract_html" id="chat_contract_html">
     <div class="mb-3">
-      <label class="form-label">Your Message or Requested Changes:</label>
+      <label class="form-label">Your Message or Changes:</label>
       <textarea class="form-control" name="user_message" rows="3"></textarea>
     </div>
     <button type="submit" class="btn btn-primary">Send to Model</button>
     <a href="{{ url_for('index') }}" class="btn btn-link">Back to Home</a>
   </form>
 </div>
-
 {% block scripts %}
 <script>
-  // If there's a 'contract' from the server, store it in localStorage
-  let updatedFromServer = `{{ contract|tojson|safe }}`;
-  if (updatedFromServer.trim() !== "") {
-    localStorage.setItem("contract_html", updatedFromServer);
+  // On page load, if the chat contract box is empty, try to load from localStorage.
+  let chatBox = document.getElementById("chatContractBox");
+  if (!chatBox.innerHTML.trim()) {
+      let stored = localStorage.getItem("contract_html") || "No contract generated.";
+      chatBox.innerHTML = stored;
   }
-
-  // On form submit, pass the localStorage contract to the server
+  // On chat form submit, ensure the current contract is sent.
   document.getElementById("chatForm").addEventListener("submit", function(){
     let stored = localStorage.getItem("contract_html") || "No contract generated.";
     document.getElementById("chat_contract_html").value = stored;
