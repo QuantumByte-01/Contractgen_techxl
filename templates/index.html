@@ -4,25 +4,17 @@
 <div class="card p-4">
   <h2>Welcome to the Contract Generator</h2>
   <p class="lead">Choose an option below:</p>
-  <div class="d-grid gap-2 d-md-flex">
-    <a href="?contract_type=nda" class="btn btn-primary me-2" onclick="event.preventDefault(); window.location='{{ url_for('form', contract_type='nda') }}'">
-      Generate NDA
-    </a>
-    <a href="?contract_type=service_agreement" class="btn btn-success me-2" onclick="event.preventDefault(); window.location='{{ url_for('form', contract_type='service_agreement') }}'">
-      Generate Service Agreement
-    </a>
-    <a href="?contract_type=employment_contract" class="btn btn-info me-2" onclick="event.preventDefault(); window.location='{{ url_for('form', contract_type='employment_contract') }}'">
-      Generate Employment Contract
-    </a>
-    <a href="?contract_type=rental_agreement" class="btn btn-warning" onclick="event.preventDefault(); window.location='{{ url_for('form', contract_type='rental_agreement') }}'">
-      Generate Rental Agreement
-    </a>
+  <div class="d-grid gap-2 d-md-flex flex-wrap">
+    <a class="btn btn-primary me-2" href="{{ url_for('form', contract_type='nda') }}">Generate NDA</a>
+    <a class="btn btn-success me-2" href="{{ url_for('form', contract_type='service_agreement') }}">Generate Service Agreement</a>
+    <a class="btn btn-info me-2" href="{{ url_for('form', contract_type='employment_contract') }}">Generate Employment Contract</a>
+    <a class="btn btn-warning" href="{{ url_for('form', contract_type='rental_agreement') }}">Generate Rental Agreement</a>
   </div>
 </div>
 
 <div class="card p-4 mt-4">
   <h2>Analyze an Existing Contract</h2>
-  <p>Upload a PDF or DOCX, and we will summarize and provide a deep analysis.</p>
+  <p>Upload a PDF or DOCX, and we'll summarize and provide a deep analysis.</p>
   <a href="{{ url_for('analyze') }}" class="btn btn-outline-secondary">Analyze Existing Contract</a>
 </div>
 {% endblock %}

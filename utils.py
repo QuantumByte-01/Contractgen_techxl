@@ -2,61 +2,39 @@ import re
 import markdown
 from google import genai
 
-# Make sure you install google-genai: pip install google-generativeai
-
-# Initialize the GenAI client with your API key.
 client = genai.Client(api_key="AIzaSyC9phEzmwI8zEx6o3ohlbdT9yeUyfKmvaE")
 
 def gemini_generate(prompt: str) -> str:
     """
     Calls the Gemini model using the Google GenAI client with an advanced prompt.
-    The prompt instructs the model to output a complete clause or analysis in formal language.
-    If further details are needed, a clarifying question is appended in square brackets.
-    At the end, detailed suggestions or improvements are listed as bullet points.
     """
-    improved_prompt = (
-        prompt
-        + "\n\nPlease provide the complete text using formal legal language. "
-          "If further details are required, include a clarifying question in square brackets. "
-          "At the end of your response, list detailed suggestions or improvements as bullet points."
-    )
     response = client.models.generate_content(
-        model="gemini-2.0-flash", contents=improved_prompt
+        model="gemini-2.0-flash", contents=prompt
     )
     return response.text
 
 def generate_clause(clause_title: str, base_text: str, customization: dict) -> str:
     """
-    Builds an advanced prompt for a single clause based on the clause title, base text, and customization options.
-    If base_text is empty, "None provided" triggers an example clause.
-    Converts the model's Markdown output to HTML.
+    Builds an advanced prompt for a single clause. Converts Markdown to HTML.
     """
     tone = customization.get("TONE", "formal")
     jurisdiction = customization.get("JURISDICTION", "Default Jurisdiction")
+    base_text_str = base_text.strip() if base_text.strip() else "None provided"
     prompt = (
         f"Generate a '{clause_title}' clause for a legal contract. "
         f"Ensure compliance with {jurisdiction} law and write it in a {tone} tone. "
-        f"Base clause text: '{base_text if base_text.strip() else 'None provided'}'."
-    )
-    model_output = gemini_generate(prompt)
-    return markdown.markdown(model_output)
-
-def generate_suggestions(customization: dict) -> str:
-    """
-    Requests additional suggestions or improvements for the contract from the Gemini model.
-    Converts any Markdown to HTML.
-    """
-    prompt = (
-        "Based on the current contract, please provide additional suggestions or improvements. "
-        "Include a detailed analysis for each suggestion. Format them as bullet points."
+        f"Base clause text: '{base_text_str}'.\n\n"
+        "Please provide a complete clause. If more info is needed, include a clarifying question in square brackets. "
+        "End with bullet-point suggestions or improvements if relevant."
     )
     model_output = gemini_generate(prompt)
     return markdown.markdown(model_output)
 
 def parse_clauses(clauses_input: str) -> dict:
     """
-    Parses multi-clause input (e.g., "Clause Title:\n[Clause content]\n\nClause Title:\n[Clause content]")
-    and returns a dict {clause_title: content}.
+    Parses multi-clause input in the format:
+      Clause Title:
+      [Clause content]
     """
     clause_dict = {}
     blocks = re.split(r'\n\s*\n', clauses_input.strip())
@@ -71,26 +49,75 @@ def parse_clauses(clauses_input: str) -> dict:
 
 def remove_suggestions_from_html(contract_html: str) -> str:
     """
-    Removes the 'Additional Suggestions' block from the contract HTML so we can export
-    a version that has no suggestions or analysis. This is a simplistic approach.
+    Removes the suggestions/analysis block from the contract HTML for export.
+    For instance, if suggestions appear after <hr><h4>Additional Suggestions...
     """
-    # For example, if your suggestions block starts with <hr><h4>Additional Suggestions
-    # and extends to the end, you could do:
-    import re
     pattern = re.compile(r'(<hr><h4>Additional Suggestions.*)', re.DOTALL)
     cleaned = re.sub(pattern, '', contract_html)
     return cleaned
 
+def extract_suggestions_from_html(contract_html: str) -> (str, str):
+    """
+    Extracts the suggestions portion and the main contract portion.
+    Returns (contract_body, suggestions_text).
+
+    Example logic: If suggestions start at <hr><h4>Additional Suggestions
+    and continue to the end, we can separate them.
+    """
+    pattern = re.compile(r'(<hr><h4>Additional Suggestions.*)', re.DOTALL)
+    match = pattern.search(contract_html)
+    if match:
+        main_part = contract_html[: match.start()].strip()
+        suggestions_part = contract_html[match.start():].strip()
+        return main_part, suggestions_part
+    else:
+        # No suggestions found
+        return contract_html, ""
+
+def incorporate_suggestions_with_model(contract_body: str, suggestions: str) -> str:
+    """
+    Feeds the contract body + suggestions to the model, asking it to merge them
+    into a final version with no additional suggestions.
+    """
+    # Convert <...> HTML tags to plain text for the prompt (optional).
+    # Or just feed raw HTML. We'll do a quick strip of tags for clarity:
+    plain_contract = re.sub(r'<[^>]+>', '', contract_body)
+    plain_suggestions = re.sub(r'<[^>]+>', '', suggestions)
+
+    prompt = (
+        "Below is a contract and a set of suggestions. "
+        "Please merge these suggestions into the contract, producing a final version. "
+        "Do not add any new suggestions or analysis. Provide the final contract text only.\n\n"
+        "CONTRACT:\n"
+        f"{plain_contract}\n\n"
+        "SUGGESTIONS:\n"
+        f"{plain_suggestions}\n\n"
+        "Return the final contract text only, with no extra bullet points or disclaimers."
+    )
+    result = gemini_generate(prompt)
+    # We'll interpret the result as plain text. If there's any Markdown, convert it:
+    return markdown.markdown(result)
+
+def generate_suggestions(customization: dict) -> str:
+    """
+    Requests additional suggestions or improvements from the model.
+    """
+    prompt = (
+        "Based on the current contract, please provide additional suggestions or improvements. "
+        "Include a detailed analysis for each suggestion. Format them as bullet points."
+    )
+    model_output = gemini_generate(prompt)
+    return markdown.markdown(model_output)
+
 def generate_contract(contract_type: str, details: dict, clauses: dict, other_clauses: dict, customization: dict) -> str:
     """
-    Generates the complete contract (HTML) by:
-    1) Building a header (depends on contract_type)
-    2) Generating each clause
-    3) Generating other (additional) clauses
-    4) Adding a signature block
-    5) Appending a suggestions block
+    Generates a contract (HTML) with:
+      - a header (based on contract_type)
+      - each clause
+      - additional clauses
+      - signature block
+      - appended suggestions at the end
     """
-    # Build header
     if contract_type == "nda":
         header = f"""
         <h2>NON-DISCLOSURE AGREEMENT</h2>
@@ -163,28 +190,27 @@ def generate_contract(contract_type: str, details: dict, clauses: dict, other_cl
         header = "<h2>Contract</h2>"
         signature_block = "<h4>Signatures</h4>"
 
-    # Generate main clauses
+    # Main clauses
     clauses_block = ""
     for title, base_text in clauses.items():
-        generated_html = generate_clause(title, base_text, customization)
-        clauses_block += f"<h3>{title}</h3><div>{generated_html}</div><hr>"
+        clause_html = generate_clause(title, base_text, customization)
+        clauses_block += f"<h3>{title}</h3><div>{clause_html}</div><hr>"
 
-    # Generate additional (other) clauses
+    # Additional clauses
     other_block = ""
     if other_clauses:
         for title, base_text in other_clauses.items():
-            generated_html = generate_clause(title, base_text, customization)
-            other_block += f"<h3>{title}</h3><div>{generated_html}</div><hr>"
+            clause_html = generate_clause(title, base_text, customization)
+            other_block += f"<h3>{title}</h3><div>{clause_html}</div><hr>"
 
-    # Gather suggestions at the end
-    suggestions = generate_suggestions(customization)
+    # Suggestions
+    suggestions_html = generate_suggestions(customization)
 
-    contract_html = (
+    return (
         header
         + clauses_block
         + other_block
         + signature_block
         + "<hr><h4>Additional Suggestions (Detailed Analysis)</h4>"
-        + f"<div>{suggestions}</div>"
+        + f"<div>{suggestions_html}</div>"
     )
-    return contract_html

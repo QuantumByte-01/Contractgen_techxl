@@ -1,20 +1,17 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.card {
+  }
+  
+  .card {
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
-}
-
-.border {
-    background-color: #ffffff;
-}
-
-textarea.form-control {
-    font-family: 'Courier New', Courier, monospace;
-}
-
-.navbar-brand {
+  }
+  
+  .bg-white {
+    background-color: #ffffff !important;
+  }
+  
+  .navbar-brand {
     font-weight: bold;
     font-size: 1.25rem;
-}
+  }
+  

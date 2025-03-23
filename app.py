@@ -1,17 +1,23 @@
 import os
-from flask import Flask, render_template, request, session, send_file, redirect, url_for
+import io
+import docx
+from flask import Flask, render_template, request, send_file
 from werkzeug.utils import secure_filename
-from utils import parse_clauses, generate_contract, remove_suggestions_from_html
+
+from utils import (
+    parse_clauses,
+    generate_contract,
+    remove_suggestions_from_html,
+    extract_suggestions_from_html,
+    incorporate_suggestions_with_model,
+)
 from chat import chat_with_model
 from analysis import extract_text_from_pdf, extract_text_from_docx, summarize_and_analyze
 
-import io
-import docx  # For exporting a docx file
-
 app = Flask(__name__)
-app.secret_key = "your_secret_key_here"  # Required for session
+app.secret_key = "your_secret_key_here"  # For demonstration, but we won't store the contract in session.
 
-# Set upload folder & allowed extensions
+# For analyzing existing PDF/DOCX
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
@@ -22,7 +28,7 @@ def allowed_file(filename):
 
 @app.route("/")
 def index():
-    # Main page now has an option to "Generate Contract" or "Analyze Existing Contract"
+    # Main page with links to contract forms & analysis
     return render_template("index.html")
 
 @app.route("/form")
@@ -39,8 +45,9 @@ def form():
 
 @app.route("/generate", methods=["POST"])
 def generate():
-    contract_type = request.form.get("contract_type")
+    contract_type = request.form.get("contract_type", "nda")
     other_clauses = {}
+
     if contract_type == "nda":
         details = {
             "EFFECTIVE_DATE": request.form.get("EFFECTIVE_DATE", "2025-01-01"),
@@ -59,6 +66,7 @@ def generate():
         other_input = request.form.get("OTHER_CLAUSES", "")
         if other_input.strip():
             other_clauses = parse_clauses(other_input)
+
     elif contract_type == "service_agreement":
         details = {
             "EFFECTIVE_DATE": request.form.get("EFFECTIVE_DATE", "2025-01-01"),
@@ -82,6 +90,7 @@ def generate():
         other_input = request.form.get("OTHER_CLAUSES", "")
         if other_input.strip():
             other_clauses = parse_clauses(other_input)
+
     elif contract_type == "employment_contract":
         details = {
             "EFFECTIVE_DATE": request.form.get("EFFECTIVE_DATE", "2025-01-01"),
@@ -103,6 +112,7 @@ def generate():
         other_input = request.form.get("OTHER_CLAUSES", "")
         if other_input.strip():
             other_clauses = parse_clauses(other_input)
+
     elif contract_type == "rental_agreement":
         details = {
             "EFFECTIVE_DATE": request.form.get("EFFECTIVE_DATE", "2025-01-01"),
@@ -127,77 +137,90 @@ def generate():
         return "Unsupported contract type."
 
     # Generate final contract HTML
-    from utils import generate_contract
     contract_html = generate_contract(contract_type, details, clauses, other_clauses, customization)
+    # We do NOT store it in session. We'll rely on localStorage in the client.
 
-    # Store in session for further modifications
-    session["contract_html"] = contract_html
     return render_template("result.html", contract=contract_html)
 
 @app.route("/apply", methods=["POST"])
 def apply_suggestions():
     """
-    Simulates applying the suggestions to the contract. 
-    We'll simply append a note for demonstration.
+    1) Extract the contract from localStorage (hidden field).
+    2) Separate the main contract from the suggestions block.
+    3) Feed both to the model, asking it to produce a final version with NO suggestions.
+    4) Return that final version in result.html.
     """
-    contract_html = session.get("contract_html", "No contract generated.")
+    contract_html = request.form.get("contract_html", "No contract generated.")
     if contract_html == "No contract generated.":
         return render_template("result.html", contract=contract_html)
 
-    applied_contract = contract_html + "<p><em>Note: The above suggestions have been applied to update the contract.</em></p>"
-    session["contract_html"] = applied_contract
-    return render_template("result.html", contract=applied_contract)
+    # 1. Separate main contract from suggestions
+    main_body, suggestions_block = extract_suggestions_from_html(contract_html)
+
+    if not suggestions_block:
+        # If no suggestions exist, just return the same contract
+        final_version = main_body
+    else:
+        # 2. Incorporate suggestions via the model
+        final_version = incorporate_suggestions_with_model(main_body, suggestions_block)
+
+    return render_template("result.html", contract=final_version)
+
 
 @app.route("/chat", methods=["GET", "POST"])
 def chat():
     """
-    Allows the user to iteratively modify the contract by chatting with the model.
-    Each user message can ask for changes, and the model returns an updated contract.
+    Allows iterative modification of the contract. The contract is loaded from localStorage
+    and sent to the server with the user's request.
     """
     if request.method == "GET":
-        return render_template("chat.html", messages=[], contract=session.get("contract_html", ""))
+        # Just show a page with a text area for user input
+        return render_template("chat.html", contract="")
     else:
-        from chat import chat_with_model
+        # POST: user has typed a message and provided contract_html from localStorage
+        contract_html = request.form.get("contract_html", "No contract generated.")
         user_message = request.form.get("user_message", "")
-        current_contract = session.get("contract_html", "")
-        updated_contract = chat_with_model(current_contract, user_message)
-        session["contract_html"] = updated_contract
+        if contract_html == "No contract generated.":
+            return render_template("chat.html", contract=contract_html)
 
-        return render_template("chat.html", 
-                               contract=updated_contract,
-                               messages=[("User", user_message), ("Model", updated_contract)])
+        updated_contract = chat_with_model(contract_html, user_message)
+        return render_template("chat.html", contract=updated_contract)
 
-@app.route("/export")
+@app.route("/export", methods=["POST"])
 def export_docx():
     """
-    Exports the contract as a DOCX file, removing suggestions or analysis block.
+    Exports the contract as a DOCX file, removing HTML tags and suggestions/analysis.
     """
-    from utils import remove_suggestions_from_html
-    contract_html = session.get("contract_html", "No contract generated.")
+    contract_html = request.form.get("contract_html", "No contract generated.")
     if contract_html == "No contract generated.":
-        return render_template("result.html", contract=contract_html)
+        return "No contract generated."
 
-    # Remove suggestions
+    # 1) Remove suggestions block
     contract_no_suggestions = remove_suggestions_from_html(contract_html)
+    # 2) Convert HTML -> plain text for docx
+    plain_text = html_to_text(contract_no_suggestions)
 
-    # Convert the contract to a .docx using python-docx
+    # 3) Build docx
     doc = docx.Document()
     doc.add_heading("Exported Contract", 0)
-    # A simple approach: Add the entire contract as text. 
-    # In a real scenario, parse the HTML more thoroughly.
-    doc.add_paragraph(contract_no_suggestions)
+    doc.add_paragraph(plain_text)
 
-    # Write to memory buffer
     buffer = io.BytesIO()
     doc.save(buffer)
     buffer.seek(0)
 
-    return send_file(buffer, as_attachment=True, download_name="contract.docx", mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="contract.docx",
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+
 
 @app.route("/analyze", methods=["GET", "POST"])
 def analyze():
     """
-    Allows user to upload a PDF or DOCX for summarization & deep analysis.
+    Summarize & analyze an existing PDF or DOCX.
     """
     if request.method == "GET":
         return render_template("analysis.html")
@@ -212,6 +235,7 @@ def analyze():
             filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
             file.save(filepath)
 
+            # Extract text
             if filename.lower().endswith(".pdf"):
                 text_content = extract_text_from_pdf(filepath)
             else:
@@ -221,6 +245,22 @@ def analyze():
             return render_template("analysis_result.html", analysis=analysis_result)
         else:
             return "Unsupported file format."
+        
+import re
+
+def html_to_text(html_content: str) -> str:
+    """
+    A simple approach to remove HTML tags, leaving plain text.
+    For more robust solutions, consider 'BeautifulSoup' or 'html2text'.
+    """
+    # Remove tags
+    text = re.sub(r'<[^>]*>', '', html_content)
+    # Unescape common entities if needed
+    text = text.replace('&nbsp;', ' ').replace('&amp;', '&')
+    # Clean up multiple spaces
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
 
 if __name__ == "__main__":
     app.run(debug=True)
