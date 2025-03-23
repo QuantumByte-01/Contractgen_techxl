@@ -1,16 +1,21 @@
-import os, io, docx, re
 from flask import Flask, render_template, request, send_file
+import os, io, docx, re
 from werkzeug.utils import secure_filename
 from utils import (
     parse_clauses,
     generate_contract,
     remove_suggestions_from_html,
     extract_suggestions_from_html,
-    incorporate_suggestions_with_model
+    incorporate_suggestions_with_model,
+    search_context
 )
 from chat import chat_with_model
 from analysis import extract_text_from_pdf, extract_text_from_docx, summarize_and_analyze
+
 from html2docx import html2docx
+
+FORCE_WEB_SEARCH = True  # Set to True to force web search on every query; False for default behavior
+
 
 html_content = "<p>This is a sample contract.</p>"
 title = "Contract Document"
@@ -163,20 +168,28 @@ def apply_suggestions():
 
 @app.route("/chat", methods=["GET", "POST"])
 def chat():
-    """
-    Allows iterative modification of the contract. The contract is loaded from localStorage
-    and sent to the server with the user's request.
-    """
     if request.method == "GET":
         return render_template("chat.html", contract="")
     else:
         contract_html = request.form.get("contract_html", "No contract generated.")
         user_message = request.form.get("user_message", "")
+        
+        additional_context = ""
+        if FORCE_WEB_SEARCH:
+            additional_context = search_context(user_message)
+            user_message += "\n" + additional_context
+        elif user_message.lower().startswith("search context:"):
+            query = user_message[len("search context:"):].strip()
+            additional_context = search_context(query)
+            user_message += "\n" + additional_context
+
         if contract_html == "No contract generated.":
             return render_template("chat.html", contract=contract_html)
-
+        
         updated_contract = chat_with_model(contract_html, user_message)
         return render_template("chat.html", contract=updated_contract)
+
+
 
 @app.route("/export", methods=["POST"])
 def export_docx():

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="card p-4">
   <h2>Iterative Contract Modification</h2>
-  <p>Below is your current contract. Enter your message to request changes.</p>
+  <p class="mb-3">Below is your current contract. Enter your message to request changes or additional context. Use <code>search context:</code> prefix for specific searches if needed.</p>
   <div class="border p-3 mb-3 bg-white" id="chatContractBox">
     {{ contract|safe }}
   </div>
@@ -11,25 +11,65 @@
     <input type="hidden" name="contract_html" id="chat_contract_html">
     <div class="mb-3">
       <label class="form-label">Your Message or Changes:</label>
-      <textarea class="form-control" name="user_message" rows="3"></textarea>
+      <textarea class="form-control" name="user_message" rows="3" placeholder="Enter your instructions here..."></textarea>
     </div>
-    <button type="submit" class="btn btn-primary">Send to Model</button>
-    <a href="{{ url_for('index') }}" class="btn btn-link">Back to Home</a>
+    <div class="d-flex flex-wrap">
+      <button type="submit" class="btn btn-primary me-2" title="Send your message to the model for updating the contract">Send to Model</button>
+      <button type="button" class="btn btn-secondary me-2" onclick="exportFromChat()" title="Export the revised contract as DOCX">Export Revised Contract</button>
+      <button type="button" class="btn btn-warning me-2" onclick="applyFromChat()" title="Incorporate model suggestions into a final version">Apply Suggested Changes</button>
+      <a href="{{ url_for('index') }}" class="btn btn-link" title="Return to Home">Back to Home</a>
+    </div>
   </form>
+  <div class="mt-4">
+    <h4>Automatic Web Search for Context</h4>
+    <p class="small text-muted">Additional context is automatically appended to your query if enabled.</p>
+  </div>
+  <!-- Include Google CSE script for internal search if needed (hidden) -->
+  <div style="display:none;">
+    <script async src="https://cse.google.com/cse.js?cx=a28fa63ae51994dac"></script>
+  </div>
 </div>
 {% block scripts %}
 <script>
-  // On page load, if the chat contract box is empty, try to load from localStorage.
+  // Ensure chat contract box is populated from localStorage if empty
   let chatBox = document.getElementById("chatContractBox");
   if (!chatBox.innerHTML.trim()) {
       let stored = localStorage.getItem("contract_html") || "No contract generated.";
       chatBox.innerHTML = stored;
   }
-  // On chat form submit, ensure the current contract is sent.
+  // On chat form submit, copy contract from localStorage to hidden field
   document.getElementById("chatForm").addEventListener("submit", function(){
-    let stored = localStorage.getItem("contract_html") || "No contract generated.";
-    document.getElementById("chat_contract_html").value = stored;
+      let stored = localStorage.getItem("contract_html") || "No contract generated.";
+      document.getElementById("chat_contract_html").value = stored;
   });
+  
+  function exportFromChat(){
+      let contract = localStorage.getItem("contract_html") || "No contract generated.";
+      let form = document.createElement("form");
+      form.method = "POST";
+      form.action = "{{ url_for('export_docx') }}";
+      let input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "contract_html";
+      input.value = contract;
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+  }
+  
+  function applyFromChat(){
+      let contract = localStorage.getItem("contract_html") || "No contract generated.";
+      let form = document.createElement("form");
+      form.method = "POST";
+      form.action = "{{ url_for('apply_suggestions') }}";
+      let input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "contract_html";
+      input.value = contract;
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+  }
 </script>
 {% endblock %}
 {% endblock %}

@@ -1,22 +1,21 @@
 import re
 import markdown
 from google import genai
+import requests
 
 client = genai.Client(api_key="AIzaSyC9phEzmwI8zEx6o3ohlbdT9yeUyfKmvaE")
 
 def gemini_generate(prompt: str) -> str:
-    """
-    Calls the Gemini model using the Google GenAI client with an advanced prompt.
-    """
-    response = client.models.generate_content(
-        model="gemini-2.0-flash", contents=prompt
+    improved_prompt = (
+        prompt
+        + "\n\nPlease provide the complete text using formal legal language. "
+          "If further details are required, include a clarifying question in square brackets. "
+          "At the end of your response, list detailed suggestions or improvements as bullet points."
     )
+    response = client.models.generate_content(model="gemini-2.0-flash", contents=improved_prompt)
     return response.text
 
 def generate_clause(clause_title: str, base_text: str, customization: dict) -> str:
-    """
-    Builds an advanced prompt for a single clause. Converts Markdown to HTML.
-    """
     tone = customization.get("TONE", "formal")
     jurisdiction = customization.get("JURISDICTION", "Default Jurisdiction")
     base_text_str = base_text.strip() if base_text.strip() else "None provided"
@@ -25,10 +24,31 @@ def generate_clause(clause_title: str, base_text: str, customization: dict) -> s
         f"Ensure compliance with {jurisdiction} law and write it in a {tone} tone. "
         f"Base clause text: '{base_text_str}'.\n\n"
         "Please provide a complete clause. If more info is needed, include a clarifying question in square brackets. "
-        "End with bullet-point suggestions or improvements if relevant."
+        "End with bullet-point suggestions if relevant."
     )
     model_output = gemini_generate(prompt)
     return markdown.markdown(model_output)
+def search_context(query: str) -> str:
+    """
+    Uses the Google Custom Search API to fetch additional context.
+    Returns a structured string with context information.
+    """
+    import requests
+    api_key = "AIzaSyCN4Ze3QgbbSmOMcLlJZAj4828ijbaG1Nk"
+    cx = "a28fa63ae51994dac"
+    url = "https://www.googleapis.com/customsearch/v1"
+    params = {"key": api_key, "cx": cx, "q": query}
+    try:
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            results = response.json().get("items", [])
+            context = "\n".join([item.get("snippet", "") for item in results[:3]])
+            return "ADDITIONAL CONTEXT:\n" + context
+        else:
+            return ""
+    except Exception as e:
+        return ""
+
 
 def parse_clauses(clauses_input: str) -> dict:
     """
